@@ -1,0 +1,8 @@
+.env
+memory/
+data/
+config.json
+mcp.json
+__pycache__/
+*.pyc
+.DS_Store
