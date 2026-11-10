@@ -1,0 +1,44 @@
+{
+  "port": 5050,
+  "interval_hours": 4,
+  "lookback_hours": 4,
+  "memory_dir": "memory",
+  "data_dir": "data",
+
+  "claude": {
+    "command": "claude",
+    "model": null,
+    "mcp_config": "mcp.json",
+    "extra_args": [],
+    "timeout_seconds": 900
+  },
+
+  "notify": {
+    "slack": true,
+    "webhook_env": "SLACK_WEBHOOK_URL"
+  },
+
+  "sources": [
+    {
+      "id": "glean",
+      "enabled": true,
+      "label": "Slack, email, meetings and docs (via Glean)",
+      "mcp_server": "glean",
+      "instructions": "Use the Glean search tools. Search Slack for DMs, mentions and key-channel threads; email for unread/flagged/important mail; meeting recordings, transcripts and AI summaries; and recently edited documents. Only include items from the lookback window unless they are still unresolved."
+    },
+    {
+      "id": "tickets",
+      "enabled": false,
+      "label": "Issue tracker (Jira, Linear, GitHub Issues, ...)",
+      "mcp_server": "jira",
+      "instructions": "List tickets assigned to me or owned by my team that changed in the lookback window, are unassigned in triage, are blocked, or are past due. Use the project keys from my projects memory file."
+    },
+    {
+      "id": "calendar",
+      "enabled": false,
+      "label": "Calendar",
+      "mcp_server": "calendar",
+      "instructions": "List my meetings for the next 48 hours. Flag the ones that need prep or where I am covering for someone."
+    }
+  ]
+}
