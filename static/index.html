@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chief of Staff</title>
+<style>
+:root{--bg:#0d0e12;--panel:#15171d;--panel2:#1b1e26;--line:#262a35;--text:#e8eaf0;--mut:#8b91a3;--acc:#6366f1;
+--red:#f87171;--redbg:#2a1719;--amb:#fbbf24;--grn:#34d399;--blu:#818cf8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:5;gap:12px;flex-wrap:wrap}
+h1{font-size:16px;margin:0}header small{display:block;color:var(--mut);font-size:11px}
+.right{display:flex;align-items:center;gap:14px;color:var(--mut);font-size:12px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--grn);margin-right:6px}
+.dot.run{background:var(--amb);animation:p 1s infinite}.dot.err{background:var(--red)}
+@keyframes p{50%{opacity:.3}}
+button{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer;font-size:13px}
+button:disabled{opacity:.5;cursor:default}
+.layout{display:grid;grid-template-columns:230px 1fr;min-height:calc(100vh - 57px)}
+aside{border-right:1px solid var(--line);padding:16px 12px;background:var(--panel);overflow:auto}
+aside h3{font-size:10px;letter-spacing:.1em;color:var(--mut);margin:0 0 8px 6px}
+.h{padding:8px;border-radius:8px;cursor:pointer;margin-bottom:2px}.h:hover,.h.on{background:var(--panel2)}
+.h .t{font-size:11px;color:var(--mut)}.h .s{font-size:12px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+main{padding:28px 24px;max-width:860px;width:100%;margin:0 auto}
+main h2{font-size:22px;margin:0}.sub{color:var(--mut);font-size:12px;margin-bottom:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+.card.sum{background:#171a2b;border-color:#2a2f4d;font-size:15px}
+.lbl{font-size:10px;letter-spacing:.1em;color:var(--mut);text-transform:uppercase;margin-bottom:10px}
+.item{padding:10px 12px;border-radius:8px;background:var(--panel2);margin-bottom:8px}
+.urgent .item{background:var(--redbg);border:1px solid #4a2326}
+.item b{display:block}.item p{margin:2px 0 0;color:#c4c8d4;font-size:13px}
+.when{font-size:11px;color:var(--red)}
+.tag{font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-left:6px;text-transform:uppercase}
+.tag.action{background:#2b2f55;color:var(--blu)}.tag.prep{background:#3a2e10;color:var(--amb)}
+.st{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;margin-right:10px;white-space:nowrap}
+.on_track{background:#0f3a2c;color:var(--grn)}.at_risk{background:#3a2e10;color:var(--amb)}.blocked{background:#3d1a1d;color:var(--red)}.done{background:#222;color:var(--mut)}
+.row{display:flex;align-items:flex-start}ul{margin:6px 0 0 18px;padding:0;color:#c4c8d4}
+.up{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)}.up:last-child{border:0}.up .w{color:var(--blu);font-weight:600;font-size:12px;min-width:90px}
+.empty{color:var(--mut);padding:60px 0;text-align:center}.err{color:var(--red);font-size:12px}
+.demo{background:#3a2e10;color:var(--amb);padding:6px 20px;font-size:12px;text-align:center}
+@media(max-width:720px){.layout{grid-template-columns:1fr}aside{border:0;border-bottom:1px solid var(--line);max-height:160px}}
+</style>
+</head>
+<body>
+<div id="demo" class="demo" hidden>Demo mode — sample data only. Run without <code>--demo</code> for real briefings.</div>
+<header>
+  <div><h1>⚡ Chief of Staff</h1><small>Your executive intelligence briefing</small></div>
+  <div class="right"><span><span id="dot" class="dot"></span><span id="last">…</span></span><span id="next"></span>
+  <button id="gen">Generate Now</button></div>
+</header>
+<div class="layout">
+  <aside><h3>HISTORY</h3><div id="hist"></div></aside>
+  <main id="main"><div class="empty">Loading…</div></main>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=d=>new Date(d).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+const ago=d=>{const m=Math.round((Date.now()-new Date(d))/6e4);return m<1?'just now':m<60?m+'m ago':Math.round(m/60)+'h ago'};
+const inn=d=>{const m=Math.round((new Date(d)-Date.now())/6e4);if(m<=0)return 'due now';return 'Next in '+(m>=60?Math.floor(m/60)+'h '+m%60+'m':m+'m')};
+let curId=null,status={};
+const sec=(icon,title,items,render,cls='')=>items&&items.length?`<div class="card ${cls}"><div class="lbl">${icon} ${title}</div>${items.map(render).join('')}</div>`:'';
+function render(b){
+  const act=a=>a?'<span class="tag action">action</span>':'';
+  $('main').innerHTML=`<h2>Executive Briefing</h2><div class="sub">${fmt(b.generated_at)} · covers recent activity${b.sources?` · sources: ${b.sources.map(esc).join(', ')}`:''}</div>
+  <div class="card sum"><div class="lbl">Summary</div>${esc(b.summary)}</div>`
+  +sec('🚨','Urgent Actions',b.urgent_actions,a=>`<div class="item"><b>${esc(a.title)}</b><span class="when">${esc(a.when)}${a.source?' · '+esc(a.source):''}</span><p>${esc(a.detail)}</p></div>`,'urgent')
+  +sec('💬','Slack Highlights',b.slack_highlights,i=>`<div class="item"><b>${esc(i.title)}${act(i.action)}</b><p>${esc(i.detail)}</p></div>`)
+  +sec('📧','Email',b.email,i=>`<div class="item"><b>${esc(i.title)}${act(i.action)}</b><p>${esc(i.detail)}</p></div>`)
+  +sec('🎙️','Meeting Notes',b.meeting_notes,m=>`<div class="item"><b>${esc(m.title)}</b><ul>${(m.bullets||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>${(m.actions||[]).length?`<p>Actions:</p><ul>${m.actions.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}</div>`)
+  +sec('📋','Project Updates',b.project_updates,p=>`<div class="item row"><span class="st ${esc(p.status)}">${esc(String(p.status).replace('_',' '))}</span><div><b>${esc(p.id)} — ${esc(p.title)}</b><p>${esc(p.detail)}</p></div></div>`)
+  +sec('📅','Coming Up',b.coming_up,c=>`<div class="up"><span class="w">${esc(c.when)}</span><span style="flex:1">${esc(c.title)}</span>${c.prep_needed?'<span class="tag prep">prep needed</span>':''}</div>`)
+  +(b.source_errors&&b.source_errors.length?`<div class="card"><div class="lbl">⚠ Source issues</div>${b.source_errors.map(e=>`<div class="err">${esc(e)}</div>`).join('')}</div>`:'');
+}
+async function load(id){
+  const r=await fetch(id?'/api/briefings/'+id:'/api/briefings/latest');
+  if(!r.ok){$('main').innerHTML='<div class="empty">No briefings yet. Click <b>Generate Now</b>.</div>';return}
+  const b=await r.json();curId=b.id;render(b);hist()
+}
+async function hist(){
+  const l=await (await fetch('/api/briefings')).json();
+  $('hist').innerHTML=l.map(h=>`<div class="h ${h.id===curId?'on':''}" data-id="${esc(h.id)}"><div class="t">${fmt(h.generated_at)}</div><div class="s">${esc(h.summary)}</div></div>`).join('')||'<div class="t" style="color:var(--mut);padding:6px">Empty</div>';
+  document.querySelectorAll('.h').forEach(e=>e.onclick=()=>load(e.dataset.id));
+}
+async function poll(){
+  try{status=await (await fetch('/api/status')).json()}catch(e){return}
+  $('demo').hidden=status.mode!=='demo';
+  $('dot').className='dot'+(status.running?' run':status.last_error?' err':'');
+  $('last').textContent=status.running?'Generating…':status.last_run?'Last briefing '+ago(status.last_run):'No briefing yet';
+  $('next').textContent=status.running?'':inn(status.next_run);
+  $('gen').disabled=status.running;
+  $('last').title=status.last_error||'';
+  if(!status.running&&status.last_run&&(!window._seen||window._seen!==status.last_run)){window._seen=status.last_run;load()}
+  if(status.last_error&&!status.running)$('next').innerHTML=`<span class="err" title="${esc(status.last_error)}">last run failed — hover dot</span>`;
+}
+$('gen').onclick=async()=>{$('gen').disabled=true;await fetch('/api/generate',{method:'POST'});poll()};
+poll();load();setInterval(poll,5000);
+</script>
+</body>
+</html>
