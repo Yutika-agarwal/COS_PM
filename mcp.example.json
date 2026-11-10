@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "glean": {
+      "type": "http",
+      "url": "https://YOUR-COMPANY-glean-mcp-endpoint.example/mcp"
+    }
+  }
+}
